@@ -1,9 +1,11 @@
 import 'package:dart_cricket/interfaces/all_interfaces.dart';
 import 'package:dart_cricket/widgets/add_player_modal.dart';
+import 'package:dart_cricket/widgets/confirmation_modal.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:injector/injector.dart';
-import 'package:dart_cricket/models/player.dart';
+import 'package:dart_cricket/dto/player.dart';
 
 class StandardGamePlayers extends StatefulWidget {
   @override
@@ -14,8 +16,9 @@ class _StandardGamePlayersState extends State<StandardGamePlayers> {
   final _playerService = Injector.appInstance.getDependency<IPlayerService>();
   final _selectedPlayers = <Player>[];
   final _availablePlayers = <Player>[];
+  bool _isLoaded = false;
 
-  Widget _buildPlayers() {
+  Widget _playersFetched(BuildContext context) {
     return Column(children: [
       Center(child: Text('Selected players')),
       Expanded(
@@ -37,22 +40,52 @@ class _StandardGamePlayersState extends State<StandardGamePlayers> {
     ]);
   }
 
-
-  @override
-  void initState() {
-    _availablePlayers.addAll(_playerService.getPlayers());
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(title: Text('Choose players')),
-        body: _buildPlayers(),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () { _addNewPlayer(context); },
-          child: Icon(Icons.add),
-          backgroundColor: Colors.green,
-        )
+    return FutureBuilder<List<Player>>(
+        future: _isLoaded ? Future.value(_availablePlayers) : _playerService.getPlayers(),
+        builder: (BuildContext context, AsyncSnapshot<List<Player>> snapshot) {
+          Widget child = _waiting();
+          if (snapshot.hasData) {
+            if (!_isLoaded) {
+              _availablePlayers.addAll(snapshot.data);
+            }
+            child = _playersFetched(context);
+            _isLoaded = true;
+          } else if (snapshot.hasError) {
+            //TODO throw and handle error
+          }
+          return Scaffold(
+              appBar: AppBar(title: Text('Choose players')),
+              body: child,
+              floatingActionButton: FloatingActionButton(
+                onPressed: () {
+                  _addNewPlayer(context);
+                },
+                child: Icon(Icons.add),
+                backgroundColor: Colors.green,
+              )
+          );
+        });
+  }
+
+  Widget _waiting() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          SizedBox(
+            child: CircularProgressIndicator(),
+            width: 60,
+            height: 60,
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: 16),
+            child: Text('Awaiting result...'),
+          )
+        ],
+      )
     );
   }
 
@@ -78,24 +111,36 @@ class _StandardGamePlayersState extends State<StandardGamePlayers> {
             color: Colors.grey[300],
           ),
           onPressed: () async {
-            //TODO add modal with question for confirmation
-            final res = await _playerService.removePlayer(player);
-            if (res) {
-              setState(() { isAvailable ? _availablePlayers.remove(player) : _selectedPlayers.remove(player); });
-            } else {
-              //TODO handle error
-            }
+            await _removePlayer(context, isAvailable ? _availablePlayers : _selectedPlayers, player );
           },
         ),
         title: Text(player.nickname));
   }
 
+  Future<void> _removePlayer(BuildContext context, List<Player> playersList, Player player) async {
+    final bool remove = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return ConfirmationModal('Delete?', 'Do you really want to delete player: ${player.nickname}').showModal(context);
+      }
+    );
+
+    if (remove) {
+      _playerService.removePlayer(player);
+      playersList.remove(player);
+
+      setState(() {});
+    }
+  }
+
   void _addNewPlayer(BuildContext context) async {
+    final List<String> allPlayers = [..._selectedPlayers, ..._availablePlayers].map((p) => p.nickname).toList();
     final newPlayer = await showDialog<Player>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AddPlayerModal().showModal(context);
+        return AddPlayerModal(allPlayers).showModal(context);
       },
     );
     

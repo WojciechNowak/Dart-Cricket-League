@@ -1,22 +1,15 @@
+import 'package:dart_cricket/database/model/player.dart';
+import 'package:dart_cricket/interfaces/db/db_executor_interface.dart';
 import 'package:dart_cricket/interfaces/player_service_interface.dart';
-import 'package:dart_cricket/models/player.dart';
+import 'package:dart_cricket/dto/player.dart';
+import 'package:dart_cricket/interfaces/storage_service_interface.dart';
+import 'package:injector/injector.dart';
 
 class PlayerService implements IPlayerService {
-  List<Player> _playerList = new List<Player>();
+  final _playerStorage = Injector.appInstance.getDependency<IStorageService>().getRepository<PlayerModel>();
 
   @override
   Future<bool> initialize() async {
-    var result = await Future.delayed(Duration(seconds: 1), () {
-      return [
-        Player('DeJones'),
-        Player('Gutek'),
-        Player('Stary'),
-        Player('Biniu')
-      ];
-    });
-
-    _playerList = new List<Player>.from(result);
-
     return Future.value(true);
   }
 
@@ -25,26 +18,41 @@ class PlayerService implements IPlayerService {
     return Future.value(true);
   }
 
-  List<Player> getPlayers() {
-    return _playerList;
+  Future<List<Player>> getPlayers() async {
+    final List<PlayerModel> result = await _playerStorage.fetchAll(() => PlayerModel());
+    return result?.map((p) {
+      final map = p.toMap();
+      return Player(p.id(), map[PlayerModel.columnName]);
+    })?.toList();
   }
 
   @override
-  Future<bool> savePlayer(Player player) {
-    _playerList.add(player);
-    //TODO save player to file
-    return Future.value(true);
+  Future<bool> savePlayer(Player player) async {
+    final playerModel = PlayerModel();
+    playerModel.fromMap({
+      PlayerModel.columnName: player.nickname
+    });
+    var res = await _playerStorage.insert(playerModel);
+    if (res.item1) {
+      player.id = res.item2;
+      return true;
+    } else {
+      return false;
+    }
   }
 
   @override
   Future<bool> removePlayer(Player player) {
-    //TODO remove player from file
-    _playerList.remove(player);
-    return Future.value(true);
+    final playerModel = PlayerModel();
+    playerModel.fromMap({
+      PlayerModel.columnId: player.id
+    });
+    return _playerStorage.delete(playerModel);
   }
 
   @override
-  bool playerExists(Player player) {
-    return _playerList.contains(player);
+  Future<bool> playerExists(Player player) async {
+    var result = await _playerStorage.fetchBy(() => PlayerModel(), QueryLimiter(fields: '${PlayerModel.columnName} = ?', values: [player.nickname]));
+    return result.length > 0 ?? false;
   }
 }

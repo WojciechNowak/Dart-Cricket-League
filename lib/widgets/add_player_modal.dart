@@ -1,12 +1,14 @@
-import 'package:dart_cricket/interfaces/player_service_interface.dart';
-import 'package:dart_cricket/models/player.dart';
+import 'package:dart_cricket/dto/player.dart';
 import 'package:flutter/material.dart';
-import 'package:injector/injector.dart';
 
 class AddPlayerModal {
   String _playerName;
   final _formKey = GlobalKey<FormState>();
-  final _playerService = Injector.appInstance.getDependency<IPlayerService>();
+  List<String> _playerNames;
+
+  AddPlayerModal(List<String> playerNames) {
+    _playerNames = playerNames.map((name) => name.toLowerCase()).toList();
+  }
 
   Widget _createForm() {
     return Form(
@@ -22,7 +24,7 @@ class AddPlayerModal {
                 validator: (value) {
                   if (value.isEmpty) {
                     return "Player name can't be empty";
-                  } else if (_playerService.playerExists(Player(_playerName))) {
+                  } else if (_playerNames.contains(_playerName.toLowerCase())) {
                     return 'Player already exists';
                   }
                   return null;
@@ -48,7 +50,7 @@ class AddPlayerModal {
           child: Text('Ok'),
           onPressed: () {
             if (_formKey.currentState.validate()) {
-              Navigator.of(context).pop(Player(_playerName));
+              Navigator.of(context).pop(Player.withName(_playerName));
             }
           },
         ),
