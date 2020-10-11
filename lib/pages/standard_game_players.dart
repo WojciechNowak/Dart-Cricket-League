@@ -1,7 +1,8 @@
+import 'package:dart_cricket/consts/routes.dart';
+import 'package:dart_cricket/domain/game_data.dart';
 import 'package:dart_cricket/interfaces/all_interfaces.dart';
 import 'package:dart_cricket/widgets/add_player_modal.dart';
 import 'package:dart_cricket/widgets/confirmation_modal.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:injector/injector.dart';
@@ -17,6 +18,10 @@ class _StandardGamePlayersState extends State<StandardGamePlayers> {
   final _selectedPlayers = <Player>[];
   final _availablePlayers = <Player>[];
   bool _isLoaded = false;
+
+  Function _startGame() {
+    return _selectedPlayers.length >= 2 ? () => Navigator.pushNamed(context, startStandardGame, arguments: GameData(_selectedPlayers, [20,19,18,17,16,15])) : null;
+  }
 
   Widget _playersFetched(BuildContext context) {
     return Column(children: [
@@ -36,6 +41,17 @@ class _StandardGamePlayersState extends State<StandardGamePlayers> {
               itemBuilder: (context, index) {
                 return _buildPlayerRow(_availablePlayers[index]);
               })
+      ),
+      Center( child: ButtonTheme(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100.0)),
+          child: RaisedButton(
+              child: Text(
+                'Start',
+                style: TextStyle(color: Colors.white, fontSize: 20.0),
+              ),
+            onPressed: _startGame(),
+          ),
+        ),
       )
     ]);
   }

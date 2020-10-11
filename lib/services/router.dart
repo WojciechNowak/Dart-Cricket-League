@@ -1,3 +1,5 @@
+import 'package:dart_cricket/dto/player.dart';
+import 'package:dart_cricket/pages/standard_game.dart';
 import 'package:flutter/material.dart';
 import 'package:dart_cricket/consts/routes.dart';
 import 'package:dart_cricket/pages/home.dart';
@@ -13,6 +15,8 @@ class Router {
         return MaterialPageRoute(builder: (context) => Home());
       case standardGamePlayers:
         return MaterialPageRoute(builder: (context) => StandardGamePlayers());
+      case startStandardGame:
+        return MaterialPageRoute(builder: (context) => StandardGame(settings.arguments));
       case teamGamePlayers:
         return null;
       default:
